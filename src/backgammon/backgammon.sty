@@ -1,6 +1,19 @@
 \usepackage{tikz}
 
 \pgfkeys{
+  % These are the background triangles used for each file.
+  /tikz/pics/backgammon file bg triangles/.style={
+    code={
+
+    }
+  },
+  % The backgammon board consists of, from left to right:
+  %
+  %   1. A column on the left, with the doubling die in the middle.
+  %   2. A rectangle with files for the pieces.
+  %   3. A column in the center, for the captured checkers.
+  %   4. Another rectangle with files for the pieces.
+  %   5. A column on the right, for the pieces which leave the board.
   /tikz/pics/backgammon board/.style={
     code={
 
