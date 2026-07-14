@@ -1,0 +1,34 @@
+\usepackage{tikz}
+
+\pgfkeys{
+  /tikz/pics/backgammon board/.style={
+    code={
+
+    }
+  },
+  /tikz/pics/backgammon checker/.style={
+    code={
+
+    }
+  },
+  /tikz/pics/backgammon die/.style={
+    code={
+
+    }
+  },
+  /tikz/pics/backgammon doubling die/.style={
+    code={
+
+    }
+  },
+  /phili/backgammon/.cd,
+    board dimension/.store in = \backgammonBoardDimension,
+    board dimension           = 5 cm,
+}
+
+\newenvironment{backgammon}[1][]{%
+  \begin{tikzpicture}[/phili/backgammon/.cd, #1]
+    \pic{backgammon board};
+}{
+  \end{tikzpicture}%
+}
