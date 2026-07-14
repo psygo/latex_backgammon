@@ -1,8 +1,20 @@
 \usepackage{tikz}
+\usetikzlibrary{shapes.geometric}
 
 \pgfkeys{
   % These are the background triangles used for each file.
-  /tikz/pics/backgammon file bg triangles/.style={
+  /tikz/pics/backgammon file bg triangle/.style={
+    code={
+      \node[%
+        isosceles triangle,
+        draw,
+        rotate             = 90,
+        minimum size       = 1cm,
+      ]
+        (T1) at (0, 0){};
+      }
+  },
+  /tikz/pics/backgammon coordinates/.style={
     code={
 
     }
@@ -16,12 +28,23 @@
   %   5. A column on the right, for the pieces which leave the board.
   /tikz/pics/backgammon board/.style={
     code={
+      % 1. The outer outline
+      \draw (0,0) rectangle (8,4);
+      
+      % 2.1. The background for the files on the bottom:
+      \foreach \x in {0, ..., 8} {
+        % TODO: Alternate colors
+        \pic at (\x, 0) {backgammon file bg triangle};
+      }
+      % 2.2. The background for the files up top:
 
+      % 3. Use the backgamon coordinates
     }
   },
   /tikz/pics/backgammon checker/.style={
     code={
-
+      \draw (0, 0) circle (0.5cm);
+      \node[] at (0, 0) {};
     }
   },
   /tikz/pics/backgammon die/.style={

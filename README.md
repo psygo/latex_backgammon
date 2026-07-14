@@ -4,6 +4,10 @@ A package for drawing backgammon vector diagrams with LaTeX.
 
 ## References
 
+- Other LaTeX backgammon projects:
+  - [@amunn/tikz-backgammon](https://github.com/amunn/tikz-backgammon)
+  - [CTAN - bg](https://ctan.org/pkg/bg)
+  - [TeX Stack Exchange - Typesetting boardgame positions using ttf font](https://tex.stackexchange.com/questions/48591/typesetting-boardgame-positions-using-ttf-font)
 - Repos:
   - [@psygo/latex_shogi](https://github.com/psygo/latex_shogi)
   - [@psygo/latex-go-diagrams-template](https://github.com/psygo/latex-go-diagrams-template)
