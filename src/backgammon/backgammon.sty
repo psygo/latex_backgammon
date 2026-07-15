@@ -1,22 +1,95 @@
 \usepackage{tikz}
 \usetikzlibrary{shapes.geometric}
 
+% The two alternating colors of the triangles ("files").
+\definecolor{backgammonLight}{HTML}{F0D9B5}
+\definecolor{backgammonDark}{HTML}{8B5A2B}
+
+% Which way a file's triangle points: "up", for the files on the bottom
+% half of the board, or "down", for the files on the top half. Each
+% choice sets both the shape's own rotation and which of its anchors
+% ends up on the flat base, so that the base (not the apex) is always
+% the point placed at the pic's `at (...)` coordinate.
+%
+% This is deliberately implemented via plain macros (\bgFileRotate,
+% \bgFileAnchor) rather than passing `shape border rotate`/`anchor`
+% straight through as pic options: those keys would need to be repeated
+% literally inside the triangle's own \node[...] below, and a key given
+% directly on a node always wins over the same key set by an enclosing
+% pic/scope, silently ignoring whatever the caller passed in.
+\tikzset{
+  backgammon file direction/.is choice,
+  backgammon file direction/up/.code   = {\def\bgFileRotate{90}\def\bgFileAnchor{south}},
+  backgammon file direction/down/.code = {\def\bgFileRotate{270}\def\bgFileAnchor{north}},
+  backgammon file direction/.default   = up,
+  backgammon file direction            = up,
+}
+
+% The board's layout constants, for the 5 regions from left to right:
+%   [left col][quadrant A: 6 files][bar][quadrant B: 6 files][right col]
+%
+% This is a plain macro (rather than a pic of its own) so that both
+% `backgammon board` and `backgammon coordinates` can compute the same
+% positions without one having to reach into the other's local scope.
+\def\bgSetupBoardLayout{%
+  \def\bgPointWidth{1}%
+  \def\bgPointsPerQuadrant{6}%
+  \def\bgSideColWidth{1.5}%
+  \def\bgBarWidth{1}%
+  \def\bgHeight{4}%
+  \pgfmathsetmacro\bgQuadrantWidth{\bgPointWidth * \bgPointsPerQuadrant}%
+  \pgfmathsetmacro\bgQuadrantAX{\bgSideColWidth}%
+  \pgfmathsetmacro\bgBarX{\bgQuadrantAX + \bgQuadrantWidth}%
+  \pgfmathsetmacro\bgQuadrantBX{\bgBarX + \bgBarWidth}%
+  \pgfmathsetmacro\bgRightColX{\bgQuadrantBX + \bgQuadrantWidth}%
+  \pgfmathsetmacro\bgBoardWidth{\bgRightColX + \bgSideColWidth}%
+}
+
 \pgfkeys{
   % These are the background triangles used for each file.
+  %
+  % The shape's own local origin is anchored to its base (the flat edge),
+  % with the apex pointing towards +x by default. See `backgammon file
+  % direction` above for how the up/down orientation is controlled.
+  %
+  % The fill color is deliberately left unset here so that it can be
+  % passed in when the pic is placed, e.g. `\pic[fill = backgammonDark]`.
   /tikz/pics/backgammon file bg triangle/.style={
     code={
       \node[%
         isosceles triangle,
-        draw,
-        rotate             = 90,
-        minimum size       = 1cm,
+        isosceles triangle stretches,
+        isosceles triangle apex angle = 30,
+        shape border rotate            = \bgFileRotate,
+        minimum height                 = 1.7cm,
+        minimum width                  = 0.75cm,
+        inner sep                      = 0pt,
+        anchor                         = \bgFileAnchor,
+        fill, % the color itself is set when the pic is placed
       ]
-        (T1) at (0, 0){};
+        (triangle) at (0, 0){};
       }
   },
+  % The point numbers 1-24, following the usual convention: 1-6 along the
+  % bottom right (nearest the right column), continuing counterclockwise
+  % through 7-12 (bottom left), 13-18 (top left) and 19-24 (top right).
   /tikz/pics/backgammon coordinates/.style={
     code={
+      \bgSetupBoardLayout
+      \foreach \i in {0, ..., 5} {
+        \pgfmathsetmacro\bgLabelAX{\bgQuadrantAX + \i + 0.5}
+        \pgfmathsetmacro\bgLabelBX{\bgQuadrantBX + \i + 0.5}
 
+        \pgfmathtruncatemacro\bgLabelBottomA{2*\bgPointsPerQuadrant - \i}
+        \pgfmathtruncatemacro\bgLabelBottomB{\bgPointsPerQuadrant - \i}
+        \pgfmathtruncatemacro\bgLabelTopA{2*\bgPointsPerQuadrant + 1 + \i}
+        \pgfmathtruncatemacro\bgLabelTopB{3*\bgPointsPerQuadrant + 1 + \i}
+
+        \node[font=\bfseries\small] at (\bgLabelAX, -0.3)             {\bgLabelBottomA};
+        \node[font=\bfseries\small] at (\bgLabelBX, -0.3)             {\bgLabelBottomB};
+        \node[font=\bfseries\small] at (\bgLabelAX, \bgHeight + 0.3)  {\bgLabelTopA};
+        \node[font=\bfseries\small] at (\bgLabelBX, \bgHeight + 0.3)  {\bgLabelTopB};
+      }
     }
   },
   % The backgammon board consists of, from left to right:
@@ -28,17 +101,43 @@
   %   5. A column on the right, for the pieces which leave the board.
   /tikz/pics/backgammon board/.style={
     code={
-      % 1. The outer outline
-      \draw (0,0) rectangle (8,4);
-      
-      % 2.1. The background for the files on the bottom:
-      \foreach \x in {0, ..., 8} {
-        % TODO: Alternate colors
-        \pic at (\x, 0) {backgammon file bg triangle};
-      }
-      % 2.2. The background for the files up top:
+      \bgSetupBoardLayout
 
-      % 3. Use the backgamon coordinates
+      % 1. The outer outline, plus the dividers between the 5 regions.
+      \draw (0, 0) rectangle (\bgBoardWidth, \bgHeight);
+      \draw (\bgQuadrantAX, 0) -- (\bgQuadrantAX, \bgHeight);
+      \draw (\bgBarX,       0) -- (\bgBarX,       \bgHeight);
+      \draw (\bgQuadrantBX, 0) -- (\bgQuadrantBX, \bgHeight);
+      \draw (\bgRightColX,  0) -- (\bgRightColX,  \bgHeight);
+
+      % 2. The 2 x 6 files in each of the 2 rectangles (24 in total),
+      %    alternating colors continuously across both quadrants.
+      \foreach \n in {0, ..., 11} {
+        \ifnum\n<6
+          \pgfmathsetmacro\bgFileX{\bgQuadrantAX + \n + 0.5}
+        \else
+          \pgfmathsetmacro\bgFileX{\bgQuadrantBX + \n - 6 + 0.5}
+        \fi
+        \ifodd\n
+          \pic[fill = backgammonDark]  at (\bgFileX, 0)        {backgammon file bg triangle};
+          \pic[fill = backgammonLight, backgammon file direction = down] at (\bgFileX, \bgHeight) {backgammon file bg triangle};
+        \else
+          \pic[fill = backgammonLight] at (\bgFileX, 0)        {backgammon file bg triangle};
+          \pic[fill = backgammonDark,  backgammon file direction = down] at (\bgFileX, \bgHeight) {backgammon file bg triangle};
+        \fi
+      }
+
+      % 3. The bar, in the center, for the captured checkers:
+      % TODO
+
+      % 4. The column on the left, for the doubling die:
+      \pic at (\bgSideColWidth/2, \bgHeight/2) {backgammon doubling die = 64};
+
+      % 5. The column on the right, for the checkers that have left the board:
+      % TODO
+
+      % 6. Use the backgammon coordinates
+      \pic {backgammon coordinates};
     }
   },
   /tikz/pics/backgammon checker/.style={
@@ -52,9 +151,21 @@
 
     }
   },
-  /tikz/pics/backgammon doubling die/.style={
+  % The doubling die (cube), showing the current stake value (2, 4, 8,
+  % 16, 32 or 64) passed as the pic's argument, e.g.
+  % `\pic {backgammon doubling die = 64}`.
+  /tikz/pics/backgammon doubling die/.style args={#1}{
     code={
-
+      \node[
+        draw,
+        fill            = black,
+        text            = white,
+        font            = \bfseries,
+        rounded corners = 1mm,
+        minimum width   = 0.9cm,
+        minimum height  = 0.9cm,
+        inner sep       = 0pt,
+      ] at (0, 0) {#1};
     }
   },
   /phili/backgammon/.cd,
