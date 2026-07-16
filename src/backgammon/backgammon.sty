@@ -108,16 +108,35 @@
 
 % Translates a (point number, stack index) pair -- point numbers 1-24,
 % following the exact same convention as `backgammon coordinates`'s
-% point labels -- into an actual `(x, y)` coordinate on the board, so
+% point labels, plus -1 for the bar (the center column, for captured
+% checkers) -- into an actual `(x, y)` coordinate on the board, so
 % pieces can be placed like `\pic at (point cs:1,1) {backgammon
 % checker = light};` instead of by hand with
-% `\bgQuadrantAX`/`\bgPointWidth`/etc. The stack index is 1-based,
-% counting outward from the board's edge (i.e. away from the center).
-% The first checker (stack index 1) is always tangent to the board's
-% edge, regardless of `checker spacing`; `checker spacing` is the gap
-% left between each checker and the next one out -- 0 means tangent
-% (touching), matching `checker size`'s own units, and a negative value
-% makes them overlap.
+% `\bgQuadrantAX`/`\bgPointWidth`/etc.
+%
+% For points 1-24, the stack index is 1-based, counting outward from
+% the board's edge (i.e. away from the center); the first checker
+% (stack index 1) is always tangent to the board's edge, regardless of
+% `checker spacing`, and the gap between checkers is `checker spacing`.
+%
+% For the bar (point -1), there is no "edge" to count outward from, so
+% the stack index's *sign* selects a direction from the board's
+% vertical center instead: positive counts upward, negative counts
+% downward -- e.g. `\pic at (point cs:-1,1) {backgammon checker =
+% light};` and `\pic at (point cs:-1,-1) {backgammon checker = dark};`
+% place the two colors' first captured checker equally far from the
+% center on opposite sides, so light and dark stacks always grow apart
+% from the board's true vertical center rather than colliding. Unlike
+% `checker spacing` (which only applies *between* checkers, since
+% stack index 1 is always tangent to the board's edge), `bar spacing`
+% is also the gap between the center line and the first checker on
+% either side -- there's no "edge" at the center to be tangent to, so
+% this is what actually controls how far apart from center the
+% checkers sit. It's independent of `checker spacing`, since the bar's
+% checkers usually want different spacing than the points'.
+%
+% Either way, a spacing of 0 means tangent (touching, matching
+% `checker size`'s own units), and a negative value makes them overlap.
 %
 % This is a proper TikZ coordinate system (`\tikzdeclarecoordinatesystem`)
 % rather than a macro expanding to `(x, y)` text: TikZ's `at <coord>`
@@ -134,7 +153,9 @@
 % duplicating it.
 \def\bgComputePointX#1{%
   \pgfmathtruncatemacro\bgPointNum{#1}%
-  \ifnum\bgPointNum<7
+  \ifnum\bgPointNum=-1
+    \pgfmathsetmacro\bgPointX{\bgBarX + \bgBarWidth/2}%
+  \else\ifnum\bgPointNum<7
     \pgfmathsetmacro\bgPointX{\bgQuadrantBX + (6.5  - \bgPointNum) * \bgPointWidth}%
   \else\ifnum\bgPointNum<13
     \pgfmathsetmacro\bgPointX{\bgQuadrantAX + (12.5 - \bgPointNum) * \bgPointWidth}%
@@ -142,21 +163,39 @@
     \pgfmathsetmacro\bgPointX{\bgQuadrantAX + (\bgPointNum - 12.5) * \bgPointWidth}%
   \else
     \pgfmathsetmacro\bgPointX{\bgQuadrantBX + (\bgPointNum - 18.5) * \bgPointWidth}%
-  \fi\fi\fi
+  \fi\fi\fi\fi
 }
 \def\bgPointCoordinateSystem#1,#2\bgPointCoordinateSystemEnd{%
   \bgSetupBoardLayout
   \bgComputePointX{#1}%
   \pgfmathsetmacro\bgCheckerDiameterUnits{(\backgammonCheckerSize / 1cm) / \bgYScale}%
-  \pgfmathsetmacro\bgCheckerGapUnits{(\backgammonCheckerSpacing / 1cm) / \bgYScale}%
-  \pgfmathsetmacro\bgStackY{%
-    0.5*\bgCheckerDiameterUnits
-    + (#2 - 1) * (\bgCheckerDiameterUnits + \bgCheckerGapUnits)%
-  }%
-  \ifnum\bgPointNum<13
-    \pgfmathsetmacro\bgPointY{\bgStackY}%
+  \pgfmathtruncatemacro\bgStackIndex{#2}%
+  \ifnum\bgPointNum=-1
+    \pgfmathsetmacro\bgBarGapUnits{(\backgammonBarSpacing / 1cm) / \bgYScale}%
+    \ifnum\bgStackIndex<0
+      \pgfmathsetmacro\bgStackY{%
+        0.5*\bgCheckerDiameterUnits + \bgBarGapUnits
+        + (-\bgStackIndex - 1) * (\bgCheckerDiameterUnits + \bgBarGapUnits)%
+      }%
+      \pgfmathsetmacro\bgPointY{\bgHeight/2 - \bgStackY}%
+    \else
+      \pgfmathsetmacro\bgStackY{%
+        0.5*\bgCheckerDiameterUnits + \bgBarGapUnits
+        + (\bgStackIndex - 1) * (\bgCheckerDiameterUnits + \bgBarGapUnits)%
+      }%
+      \pgfmathsetmacro\bgPointY{\bgHeight/2 + \bgStackY}%
+    \fi
   \else
-    \pgfmathsetmacro\bgPointY{\bgHeight - \bgStackY}%
+    \pgfmathsetmacro\bgCheckerGapUnits{(\backgammonCheckerSpacing / 1cm) / \bgYScale}%
+    \pgfmathsetmacro\bgStackY{%
+      0.5*\bgCheckerDiameterUnits
+      + (\bgStackIndex - 1) * (\bgCheckerDiameterUnits + \bgCheckerGapUnits)%
+    }%
+    \ifnum\bgPointNum<13
+      \pgfmathsetmacro\bgPointY{\bgStackY}%
+    \else
+      \pgfmathsetmacro\bgPointY{\bgHeight - \bgStackY}%
+    \fi
   \fi
   \pgfpointxy{\bgPointX}{\bgPointY}%
 }
@@ -477,6 +516,13 @@
     % value makes them overlap. Independent of `checker size`.
     checker spacing/.store in = \backgammonCheckerSpacing,
     checker spacing           = 0cm,
+    % For checkers stacked on the bar (see `point cs:-1,...` above):
+    % both the gap between the vertical center and the first checker
+    % on either side, and the gap between checkers beyond that one.
+    % Kept separate from `checker spacing` since the bar usually wants
+    % different spacing than the points do.
+    bar spacing/.store in = \backgammonBarSpacing,
+    bar spacing           = 0cm,
     % The doubling die's outline width (its size and font are pic
     % options -- `scale`/`font size` -- rather than environment-wide,
     % since there's only ever one doubling die on the board).

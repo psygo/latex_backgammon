@@ -14,6 +14,7 @@
     coordinates font size = 12pt,
     checker size          = 1cm,
     checker spacing       = -0.05cm,
+    bar spacing           = 0.2cm,
   ]
     % Doubling Die
     \pic at (\bgLeftColWidth/2, \bgHeight/2) {backgammon doubling die = 2, scale = 1, font size = 15pt};
@@ -28,5 +29,9 @@
     \pic at (point cs:1,1)  {backgammon checker = dark};
     \pic at (point cs:1,2)  {backgammon checker = dark};
     \pic at (point cs:13,1) {backgammon checker = light};
+
+    % Captured Checkers
+    \pic at (point cs:-1,1)  {backgammon checker = light, number = 2, font size = 15pt};
+    \pic at (point cs:-1,-1) {backgammon checker = dark};
   \end{backgammon}
 \end{document}
