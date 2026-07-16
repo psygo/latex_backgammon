@@ -187,8 +187,21 @@
     \fi
   \else
     \pgfmathsetmacro\bgCheckerGapUnits{(\backgammonCheckerSpacing / 1cm) / \bgYScale}%
+    % A node's stroke straddles its nominal boundary (half inside, half
+    % outside), so a checker centered exactly `0.5*diameter` from the
+    % board edge -- i.e. only tangent by its *nominal* radius -- has
+    % its actual drawn border overlap the board edge by half the
+    % border's width. Shifting the whole stack in by that much (the
+    % wider of the two colors', since this coordinate system is picked
+    % before `backgammon checker` knows which color it'll draw) makes
+    % the outermost checker's own drawn border, not just its nominal
+    % circle, the thing that's tangent to the board edge.
+    \pgfmathsetmacro\bgCheckerBorderMarginUnits{%
+      max(\backgammonCheckerBorderWidthLight / 1cm, \backgammonCheckerBorderWidthDark / 1cm)
+      / 2 / \bgYScale%
+    }%
     \pgfmathsetmacro\bgStackY{%
-      0.5*\bgCheckerDiameterUnits
+      \bgCheckerBorderMarginUnits + 0.5*\bgCheckerDiameterUnits
       + (\bgStackIndex - 1) * (\bgCheckerDiameterUnits + \bgCheckerGapUnits)%
     }%
     \ifnum\bgPointNum<13
@@ -289,11 +302,21 @@
     code={
       \bgSetupBoardLayout
 
-      % 1. The outer outline, plus the dividers between the regions. The
-      %    left/right dividers are only drawn when that column is
-      %    actually shown, since otherwise they'd just double up on the
-      %    outer outline (their width having collapsed to 0).
-      \draw (0, 0) rectangle (\bgBoardWidth, \bgHeight);
+      % 1. The outer outline (filled with `board background color`),
+      %    plus the "bars" -- the left/right columns and the center
+      %    bar, filled with `bar background color` -- and the dividers
+      %    between all the regions. The left/right dividers/fills are
+      %    only drawn when that column is actually shown, since
+      %    otherwise they'd just double up on the outer outline (their
+      %    width having collapsed to 0).
+      \draw[fill = \backgammonBoardBackgroundColor] (0, 0) rectangle (\bgBoardWidth, \bgHeight);
+      \ifbackgammonShowLeftColumn
+        \fill[\backgammonBarBackgroundColor] (0, 0) rectangle (\bgQuadrantAX, \bgHeight);
+      \fi
+      \fill[\backgammonBarBackgroundColor] (\bgBarX, 0) rectangle (\bgQuadrantBX, \bgHeight);
+      \ifbackgammonShowRightColumn
+        \fill[\backgammonBarBackgroundColor] (\bgRightColX, 0) rectangle (\bgBoardWidth, \bgHeight);
+      \fi
       \ifbackgammonShowLeftColumn
         \draw (\bgQuadrantAX, 0) -- (\bgQuadrantAX, \bgHeight);
       \fi
@@ -344,8 +367,9 @@
   % pic's argument, e.g. `\pic at (x, y) {backgammon checker = light}`.
   % Like `backgammon doubling die`, it's placed by the user (not the
   % board); its color comes from `light checker color`/`dark checker
-  % color`, its outline from `checker border width`, and its diameter
-  % is `checker size` multiplied by the shared `scale` pic option
+  % color`, its outline from `light checker border color`/`width` and
+  % `dark checker border color`/`width`, and its diameter is `checker
+  % size` multiplied by the shared `scale` pic option
   % (e.g. `\pic at (x, y) {backgammon checker = light, scale = 0.9}`).
   %
   % A stack taller than 5 checkers is conventionally drawn as only 5
@@ -362,8 +386,8 @@
       \pgfmathsetmacro\bgCheckerDiameter{(\backgammonCheckerSize / 1cm) * \bgPicScale}
       \pgfmathsetlengthmacro\bgCheckerNumberFontSize{\bgPicFontSize * \bgPicScale}
       \node[
-        draw,
-        line width     = \backgammonCheckerBorderWidth,
+        draw            = \backgammonCheckerBorderColorLight,
+        line width     = \backgammonCheckerBorderWidthLight,
         circle,
         fill           = \backgammonCheckerColorLight,
         text           = \backgammonCheckerColorDark,
@@ -380,8 +404,8 @@
       \pgfmathsetmacro\bgCheckerDiameter{(\backgammonCheckerSize / 1cm) * \bgPicScale}
       \pgfmathsetlengthmacro\bgCheckerNumberFontSize{\bgPicFontSize * \bgPicScale}
       \node[
-        draw,
-        line width     = \backgammonCheckerBorderWidth,
+        draw            = \backgammonCheckerBorderColorDark,
+        line width     = \backgammonCheckerBorderWidthDark,
         circle,
         fill           = \backgammonCheckerColorDark,
         text           = \backgammonCheckerColorLight,
@@ -483,6 +507,13 @@
     board width            = 18cm,
     board height/.store in = \backgammonBoardHeight,
     board height           = 4cm,
+    % The board's overall background (behind the points) and the
+    % "bars" -- the left/right columns and the center bar -- own
+    % background, so they can be set apart from the rest of the board.
+    board background color/.store in = \backgammonBoardBackgroundColor,
+    board background color           = white,
+    bar background color/.store in   = \backgammonBarBackgroundColor,
+    bar background color             = white,
     coordinates/.is if        = backgammonShowCoordinates,
     coordinates/.default      = true,
     coordinates               = true,
@@ -500,15 +531,21 @@
     dark file color/.store in  = \backgammonFileColorDark,
     dark file color            = backgammonDark,
     % The two checker colors (see `backgammon checker`'s `light`/`dark`
-    % argument), their outline width, and their diameter (an absolute
-    % physical size, like `board width`, multiplied by that pic's own
-    % `scale` option).
+    % argument), their border colors and widths, and their diameter
+    % (an absolute physical size, like `board width`, multiplied by
+    % that pic's own `scale` option).
     light checker color/.store in = \backgammonCheckerColorLight,
     light checker color           = white,
     dark checker color/.store in  = \backgammonCheckerColorDark,
     dark checker color            = black,
-    checker border width/.store in = \backgammonCheckerBorderWidth,
-    checker border width            = 1pt,
+    light checker border color/.store in = \backgammonCheckerBorderColorLight,
+    light checker border color           = black,
+    dark checker border color/.store in  = \backgammonCheckerBorderColorDark,
+    dark checker border color            = black,
+    light checker border width/.store in = \backgammonCheckerBorderWidthLight,
+    light checker border width           = 1pt,
+    dark checker border width/.store in  = \backgammonCheckerBorderWidthDark,
+    dark checker border width            = 1pt,
     checker size/.store in = \backgammonCheckerSize,
     checker size           = 0.9cm,
     % The gap left between checkers stacked on the same point (see

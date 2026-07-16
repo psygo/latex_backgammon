@@ -5,16 +5,23 @@
 
 \begin{document}
   \begin{backgammon}[%
-    board width           = 20cm,
-    board height          = 10cm,
-    file height           = 4.25cm,
-    file gap              = 0.15cm,
-    side column width     = 1.2cm,
-    coordinates gap       = 0.3cm,
-    coordinates font size = 12pt,
-    checker size          = 1cm,
-    checker spacing       = -0.05cm,
-    bar spacing           = 0.2cm,
+    board width                = 20cm,
+    board height               = 10cm,
+    file height                = 4.25cm,
+    file gap                   = 0.15cm,
+    side column width          = 1.2cm,
+    coordinates gap            = 0.3cm,
+    coordinates font size      = 12pt,
+    checker size               = 1cm,
+    checker spacing            = 0.0cm,
+    bar spacing                = 0.2cm,
+    dark checker border color  = white,
+    dark checker border width  = 0.5mm,
+    light checker border width = 0.5mm,
+    board background color     = backgammonLight,
+    light file color           = black,
+    dark file color            = backgammonDark,
+    bar background color       = backgammonDark,
   ]
     % Doubling Die
     \pic at (\bgLeftColWidth/2, \bgHeight/2) {backgammon doubling die = 2, scale = 1, font size = 15pt};
@@ -29,6 +36,10 @@
     \pic at (point cs:1,1)  {backgammon checker = dark};
     \pic at (point cs:1,2)  {backgammon checker = dark};
     \pic at (point cs:13,1) {backgammon checker = light};
+    
+    % Checkers Off the Board
+    \pic at (point cs:0,1) {backgammon checker = light};
+    \pic at (point cs:25,1) {backgammon checker = dark};
 
     % Captured Checkers
     \pic at (point cs:-1,1)  {backgammon checker = light, number = 2, font size = 15pt};
