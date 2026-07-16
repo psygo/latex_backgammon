@@ -1,6 +1,10 @@
 \usepackage{tikz}
 \usetikzlibrary{shapes.geometric}
 
+% Whether the point numbers 1-24 are drawn around the board; see the
+% `coordinates` key on the `backgammon` environment.
+\newif\ifbackgammonShowCoordinates
+
 % The two alternating colors of the triangles ("files").
 \definecolor{backgammonLight}{HTML}{F0D9B5}
 \definecolor{backgammonDark}{HTML}{8B5A2B}
@@ -130,14 +134,20 @@
       % 3. The bar, in the center, for the captured checkers:
       % TODO
 
-      % 4. The column on the left, for the doubling die:
-      \pic at (\bgSideColWidth/2, \bgHeight/2) {backgammon doubling die = 64};
+      % 4. The column on the left, for the doubling die: this is left
+      %    empty here. The die's value and position are up to the user,
+      %    placed like any other piece via a `\pic` inside `backgammon`,
+      %    e.g. `\pic at (\bgSideColWidth/2, \bgHeight/2)
+      %    {backgammon doubling die = 64};`.
 
       % 5. The column on the right, for the checkers that have left the board:
       % TODO
 
-      % 6. Use the backgammon coordinates
-      \pic {backgammon coordinates};
+      % 6. Use the backgammon coordinates (optional, see the
+      %    `coordinates` key on the `backgammon` environment)
+      \ifbackgammonShowCoordinates
+        \pic {backgammon coordinates};
+      \fi
     }
   },
   /tikz/pics/backgammon checker/.style={
@@ -158,8 +168,8 @@
     code={
       \node[
         draw,
-        fill            = black,
-        text            = white,
+        fill            = white,
+        text            = black,
         font            = \bfseries,
         rounded corners = 1mm,
         minimum width   = 0.9cm,
@@ -171,11 +181,27 @@
   /phili/backgammon/.cd,
     board dimension/.store in = \backgammonBoardDimension,
     board dimension           = 5 cm,
+    coordinates/.is if        = backgammonShowCoordinates,
+    coordinates/.default      = true,
+    coordinates               = true,
 }
 
 \newenvironment{backgammon}[1][]{%
   \begin{tikzpicture}[/phili/backgammon/.cd, #1]
-    \pic{backgammon board};
+    % The board is drawn on a fixed, unit-less grid (see
+    % \bgSetupBoardLayout); `board dimension` is the desired physical
+    % width, so we scale the whole board (including node shapes, via
+    % `transform shape`) by the ratio between the two.
+    %
+    % This scope is left open here and only closed in the environment's
+    % end code, so that any pieces (checkers, dice, ...) the user places
+    % with their own `\pic` commands inside `backgammon` share the same
+    % grid coordinates and the same scaling as the board itself.
+    \bgSetupBoardLayout
+    \pgfmathsetmacro\bgScale{\backgammonBoardDimension / (\bgBoardWidth cm)}
+    \begin{scope}[scale = \bgScale, transform shape]
+      \pic{backgammon board};
 }{
+    \end{scope}
   \end{tikzpicture}%
 }
