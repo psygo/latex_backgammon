@@ -43,24 +43,37 @@
 % `backgammon board` and `backgammon coordinates` can compute the same
 % positions without one having to reach into the other's local scope.
 %
-% The left/right columns collapse to width 0 when disabled (see
-% `left column`/`right column`), so the rest of the board simply closes
-% up around them instead of leaving a gap.
+% Throughout this file, a plain number denotes TikZ's default
+% coordinate unit, i.e. 1cm (so e.g. `\bgHeight = 4` means 4cm before
+% any further scaling). The left/right columns (when shown) are given
+% directly in physical cm by the user (`side column width`) and are
+% NOT stretched by `board width`: instead, `\bgPointWidth` -- and so
+% the whole point grid (12 points + the bar) -- is computed to exactly
+% fill whatever width `board width` leaves over, so the side columns
+% always come out exactly the size the user asked for, regardless of
+% how wide the board itself is. They collapse to width 0 when disabled
+% (see `left column`/`right column`), so the point grid simply expands
+% to fill the space they would have taken.
 \def\bgSetupBoardLayout{%
-  \def\bgPointWidth{1}%
   \def\bgPointsPerQuadrant{6}%
-  \def\bgBarWidth{1}%
+  \def\bgBarWidthInPoints{1}%
   \def\bgHeight{4}%
   \ifbackgammonShowLeftColumn
-    \let\bgLeftColWidth\backgammonSideColWidth
+    \pgfmathsetmacro\bgLeftColWidth{\backgammonSideColWidth / 1cm}%
   \else
     \def\bgLeftColWidth{0}%
   \fi
   \ifbackgammonShowRightColumn
-    \let\bgRightColWidth\backgammonSideColWidth
+    \pgfmathsetmacro\bgRightColWidth{\backgammonSideColWidth / 1cm}%
   \else
     \def\bgRightColWidth{0}%
   \fi
+  \pgfmathsetmacro\bgTargetBoardWidth{\backgammonBoardWidth / 1cm}%
+  \pgfmathsetmacro\bgPointWidth{%
+    (\bgTargetBoardWidth - \bgLeftColWidth - \bgRightColWidth)
+    / (2*\bgPointsPerQuadrant + \bgBarWidthInPoints)%
+  }%
+  \pgfmathsetmacro\bgBarWidth{\bgBarWidthInPoints * \bgPointWidth}%
   \pgfmathsetmacro\bgQuadrantWidth{\bgPointWidth * \bgPointsPerQuadrant}%
   \pgfmathsetmacro\bgQuadrantAX{\bgLeftColWidth}%
   \pgfmathsetmacro\bgBarX{\bgQuadrantAX + \bgQuadrantWidth}%
@@ -79,19 +92,22 @@
   % The fill color is deliberately left unset here so that it can be
   % passed in when the pic is placed, e.g. `\pic[fill = backgammonDark]`.
   %
-  % The width is derived from `file gap` (the space left between two
-  % neighboring files, out of the fixed 1-unit spacing between them)
-  % rather than being a size of its own, so that the triangles always
-  % stay centered on, and touching, their point on the grid.
+  % The width is derived from `file gap` (an absolute physical gap
+  % left between two neighboring files, subtracted from the point
+  % width computed in `\bgSetupBoardLayout`) rather than being a size
+  % of its own, so that the triangles always stay centered on, and
+  % touching, their point on the grid.
   /tikz/pics/backgammon file bg triangle/.style={
     code={
-      \pgfmathsetmacro\bgFileWidth{1 - \backgammonFileGap}
+      \bgSetupBoardLayout
+      \pgfmathsetmacro\bgFileGapUnits{\backgammonFileGap / 1cm}
+      \pgfmathsetmacro\bgFileWidth{\bgPointWidth - \bgFileGapUnits}
       \node[%
         isosceles triangle,
         isosceles triangle stretches,
         isosceles triangle apex angle = 30,
         shape border rotate            = \bgFileRotate,
-        minimum height                 = \backgammonFileHeight cm,
+        minimum height                 = \backgammonFileHeight,
         minimum width                  = \bgFileWidth cm,
         inner sep                      = 0pt,
         anchor                         = \bgFileAnchor,
@@ -107,19 +123,26 @@
   /tikz/pics/backgammon coordinates/.style={
     code={
       \bgSetupBoardLayout
+      % `coordinates gap` is an absolute physical distance, but this
+      % pic's y-coordinates are on the same pre-`yscale` grid as
+      % `\bgHeight` (see `backgammon`'s environment code), so it has to
+      % be converted back into that grid's units by dividing out
+      % `\bgYScale` here -- otherwise the gap itself would grow or
+      % shrink along with `board height` instead of staying fixed.
+      \pgfmathsetmacro\bgCoordGap{(\backgammonCoordinatesGap / 1cm) / \bgYScale}
       \foreach \i in {0, ..., 5} {
-        \pgfmathsetmacro\bgLabelAX{\bgQuadrantAX + \i + 0.5}
-        \pgfmathsetmacro\bgLabelBX{\bgQuadrantBX + \i + 0.5}
+        \pgfmathsetmacro\bgLabelAX{\bgQuadrantAX + (\i + 0.5)*\bgPointWidth}
+        \pgfmathsetmacro\bgLabelBX{\bgQuadrantBX + (\i + 0.5)*\bgPointWidth}
 
         \pgfmathtruncatemacro\bgLabelBottomA{2*\bgPointsPerQuadrant - \i}
         \pgfmathtruncatemacro\bgLabelBottomB{\bgPointsPerQuadrant - \i}
         \pgfmathtruncatemacro\bgLabelTopA{2*\bgPointsPerQuadrant + 1 + \i}
         \pgfmathtruncatemacro\bgLabelTopB{3*\bgPointsPerQuadrant + 1 + \i}
 
-        \node[font=\bfseries\small, transform shape = false] at (\bgLabelAX, -0.3)             {\bgLabelBottomA};
-        \node[font=\bfseries\small, transform shape = false] at (\bgLabelBX, -0.3)             {\bgLabelBottomB};
-        \node[font=\bfseries\small, transform shape = false] at (\bgLabelAX, \bgHeight + 0.3)  {\bgLabelTopA};
-        \node[font=\bfseries\small, transform shape = false] at (\bgLabelBX, \bgHeight + 0.3)  {\bgLabelTopB};
+        \node[font=\fontsize{\backgammonCoordinatesFontSize}{\backgammonCoordinatesFontSize}\selectfont\bfseries, transform shape = false] at (\bgLabelAX, -\bgCoordGap)             {\bgLabelBottomA};
+        \node[font=\fontsize{\backgammonCoordinatesFontSize}{\backgammonCoordinatesFontSize}\selectfont\bfseries, transform shape = false] at (\bgLabelBX, -\bgCoordGap)             {\bgLabelBottomB};
+        \node[font=\fontsize{\backgammonCoordinatesFontSize}{\backgammonCoordinatesFontSize}\selectfont\bfseries, transform shape = false] at (\bgLabelAX, \bgHeight + \bgCoordGap)  {\bgLabelTopA};
+        \node[font=\fontsize{\backgammonCoordinatesFontSize}{\backgammonCoordinatesFontSize}\selectfont\bfseries, transform shape = false] at (\bgLabelBX, \bgHeight + \bgCoordGap)  {\bgLabelTopB};
       }
     }
   },
@@ -152,9 +175,9 @@
       %    alternating colors continuously across both quadrants.
       \foreach \n in {0, ..., 11} {
         \ifnum\n<6
-          \pgfmathsetmacro\bgFileX{\bgQuadrantAX + \n + 0.5}
+          \pgfmathsetmacro\bgFileX{\bgQuadrantAX + (\n + 0.5)*\bgPointWidth}
         \else
-          \pgfmathsetmacro\bgFileX{\bgQuadrantBX + \n - 6 + 0.5}
+          \pgfmathsetmacro\bgFileX{\bgQuadrantBX + (\n - 6 + 0.5)*\bgPointWidth}
         \fi
         \ifodd\n
           \pic[fill = \backgammonFileColorDark]  at (\bgFileX, 0)        {backgammon file bg triangle};
@@ -216,27 +239,35 @@
   /phili/backgammon/.cd,
     % The board's physical size. These are independent (rather than a
     % single `board dimension` that scales both together), so the board
-    % can be stretched to a non-natural aspect ratio if desired. The
-    % defaults reproduce the board's natural 16-by-4-unit aspect ratio.
+    % can be stretched to a non-natural aspect ratio if desired.
     board width/.store in  = \backgammonBoardWidth,
-    board width            = 5 cm,
+    board width            = 18cm,
     board height/.store in = \backgammonBoardHeight,
-    board height           = 1.25 cm,
+    board height           = 4cm,
     coordinates/.is if        = backgammonShowCoordinates,
     coordinates/.default      = true,
     coordinates               = true,
+    % The distance between the board's outer edge and the point-number
+    % labels, and their font size. Both are absolute physical sizes,
+    % just like `board width`/`board height`, unaffected by the
+    % board's own scaling.
+    coordinates gap/.store in       = \backgammonCoordinatesGap,
+    coordinates gap                 = 0.3cm,
+    coordinates font size/.store in = \backgammonCoordinatesFontSize,
+    coordinates font size           = 9pt,
     % The two alternating colors of the file triangles.
     light file color/.store in = \backgammonFileColorLight,
     light file color           = backgammonLight,
     dark file color/.store in  = \backgammonFileColorDark,
     dark file color            = backgammonDark,
-    % How tall the file triangles are, and how much of the fixed
-    % 1-unit spacing between neighboring files is left empty as a gap
-    % between them (see `backgammon file bg triangle` above).
+    % How tall the file triangles are, and how much physical space is
+    % left as a gap between neighboring files (see `backgammon file bg
+    % triangle` above). Both are absolute physical sizes, rather than
+    % being relative to the point spacing.
     file height/.store in = \backgammonFileHeight,
-    file height           = 1.7,
+    file height           = 1.7cm,
     file gap/.store in    = \backgammonFileGap,
-    file gap              = 0.25,
+    file gap              = 0.1cm,
     % Whether the left/right side columns take up any space at all.
     left column/.is if    = backgammonShowLeftColumn,
     left column/.default  = true,
@@ -244,9 +275,13 @@
     right column/.is if   = backgammonShowRightColumn,
     right column/.default = true,
     right column          = true,
-    % The width of the left/right side columns, when shown.
+    % The width of the left/right side columns, when shown. This is an
+    % absolute physical size: see `\bgSetupBoardLayout` for how the
+    % point grid is sized to fill whatever `board width` leaves over
+    % after these, rather than the side columns being stretched along
+    % with everything else.
     side column width/.store in = \backgammonSideColWidth,
-    side column width           = 1.5,
+    side column width           = 1.5cm,
 }
 
 \newenvironment{backgammon}[1][]{%
@@ -260,21 +295,22 @@
     % when the `.cd` and the (whitespace-prefixed) key list are given
     % to the same `\pgfkeys`/`\tikzset` call, as they would be here.
     \pgfqkeys{/phili/backgammon}{#1}
-    % The board is drawn on a fixed, unit-less grid (see
-    % \bgSetupBoardLayout); `board width`/`board height` are the desired
-    % physical size of that grid, so we stretch the board's layout
-    % (the outer rectangle, the dividers, and where each piece is
-    % positioned) by the ratio between the two, independently in x and
-    % y so that a non-natural aspect ratio can be requested.
+    % The horizontal axis needs no extra scaling here: `\bgSetupBoardLayout`
+    % already sizes the point grid to exactly fill `board width` (minus
+    % the side columns, which are their own absolute physical size --
+    % see the comment there). The vertical axis is a single region
+    % (there's no analogous "some things are absolute" split for
+    % height), so it keeps the simpler approach of drawing on a
+    % fixed-height grid and stretching it to `board height` via `yscale`.
     %
-    % `transform shape` IS needed here, even though we don't want a
-    % non-uniform stretch to distort node shapes: a `\pic` (unlike a
-    % plain `\node`) only positions itself according to the ambient
-    % scale/rotate if `transform shape` is in effect for it -- without
-    % it, every `\pic` in here (the board itself, each file, the
-    % coordinate labels, any piece the user places) would render at its
-    % natural, un-stretched position, ignoring `board width`/`board
-    % height` entirely instead of just being placed wrong.
+    % `transform shape` IS needed here, even though only `yscale` is
+    % non-1 and we don't want that stretch to distort node shapes: a
+    % `\pic` (unlike a plain `\node`) only positions itself according to
+    % the ambient scale/rotate if `transform shape` is in effect for it
+    % -- without it, every `\pic` in here (the board itself, each file,
+    % the coordinate labels, any piece the user places) would render at
+    % its natural, un-stretched y position, ignoring `board height`
+    % entirely instead of just being placed wrong.
     %
     % So `transform shape` is enabled here for correct positioning, and
     % every leaf shape that shouldn't be distorted by it (the file
@@ -287,9 +323,8 @@
     % with their own `\pic` commands inside `backgammon` share the same
     % grid coordinates and the same scaling as the board itself.
     \bgSetupBoardLayout
-    \pgfmathsetmacro\bgXScale{\backgammonBoardWidth  / (\bgBoardWidth cm)}
-    \pgfmathsetmacro\bgYScale{\backgammonBoardHeight / (\bgHeight     cm)}
-    \begin{scope}[xscale = \bgXScale, yscale = \bgYScale, transform shape]
+    \pgfmathsetmacro\bgYScale{\backgammonBoardHeight / (\bgHeight cm)}
+    \begin{scope}[yscale = \bgYScale, transform shape]
       \pic{backgammon board};
 }{
     \end{scope}
