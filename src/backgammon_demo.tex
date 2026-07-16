@@ -3,6 +3,8 @@
 % ----------------------------------------------------------
 % Config
 
+\usepackage[margin = 2.5cm]{geometry}
+
 \def\repoPath{/Users/phili/Code/latex_backgammon/src/}
 \usepackage{\repoPath/backgammon/backgammon}
 
@@ -26,6 +28,8 @@
   This is a package for drawing vector backgammon diagrams in \LaTeX.
 
   \section{Diagram Examples}
+  
+  \subsection{Showing off all the features}
   
   \begin{backgammon}[%
     board width                = 15cm,
@@ -67,5 +71,107 @@
     % Captured Checkers
     \pic at (point cs:-1,1)  {backgammon checker = light, number = 2, font size = 15pt};
     \pic at (point cs:-1,-1) {backgammon checker = dark};
+  \end{backgammon}
+
+  \subsection{The Initial Backgammon Position}
+  
+  \begin{backgammon}[%
+    board width                = 15cm,
+    board height               = 8cm,
+    file height                = 3.5cm,
+    file gap                   = 0.15cm,
+    side column width          = 1.2cm,
+    coordinates gap            = 0.3cm,
+    coordinates font size      = 12pt,
+    checker size               = 0.75cm,
+    checker spacing            = 0.025cm,
+    bar spacing                = 0.2cm,
+    dark checker border color  = white,
+    dark checker border width  = 0.5mm,
+    light checker border width = 0.5mm,
+    board background color     = backgammonLight,
+    light file color           = black,
+    dark file color            = backgammonDark,
+    bar background color       = backgammonDark,
+  ]
+    % Doubling Die
+    \pic at (\bgLeftColWidth/2, \bgHeight/2) {backgammon doubling die = 2, scale = 0.9, font size = 15pt};
+    
+    % Checkers
+    \foreach \i in {1, ..., 5} {
+      \pic at (point cs:12,\i) {backgammon checker = light};
+    }
+    \foreach \i in {1, ..., 5} {
+      \pic at (point cs:13,\i) {backgammon checker = dark};
+    }
+    \foreach \i in {1, ..., 3} {
+      \pic at (point cs:8,\i) {backgammon checker = dark};
+    }
+    \foreach \i in {1, ..., 3} {
+      \pic at (point cs:17,\i) {backgammon checker = light};
+    }
+    \foreach \i in {1, ..., 5} {
+      \pic at (point cs:6,\i) {backgammon checker = dark};
+    }
+    \foreach \i in {1, ..., 5} {
+      \pic at (point cs:19,\i) {backgammon checker = light};
+    }
+    \foreach \i in {1, ..., 2} {
+      \pic at (point cs:24,\i) {backgammon checker = dark};
+    }
+    \foreach \i in {1, ..., 2} {
+      \pic at (point cs:1,\i) {backgammon checker = light};
+    }
+  \end{backgammon}
+  
+  \subsection{Black and White}
+
+  \begin{backgammon}[%
+    board width                = 15cm,
+    board height               = 8cm,
+    file height                = 3.5cm,
+    file gap                   = 0.15cm,
+    side column width          = 1.2cm,
+    coordinates gap            = 0.3cm,
+    coordinates font size      = 12pt,
+    checker size               = 0.75cm,
+    checker spacing            = 0.025cm,
+    bar spacing                = 0.2cm,
+    dark checker border color  = white,
+    dark checker border width  = 0.5mm,
+    light checker border width = 0.5mm,
+    board background color     = backgammonLight,
+    light file color           = black,
+    dark file color            = backgammonDark,
+    bar background color       = backgammonDark,
+  ]
+    % Doubling Die
+    \pic at (\bgLeftColWidth/2, \bgHeight/2) {backgammon doubling die = 2, scale = 0.9, font size = 15pt};
+    
+    % Checkers
+    \foreach \i in {1, ..., 5} {
+      \pic at (point cs:12,\i) {backgammon checker = light};
+    }
+    \foreach \i in {1, ..., 5} {
+      \pic at (point cs:13,\i) {backgammon checker = dark};
+    }
+    \foreach \i in {1, ..., 3} {
+      \pic at (point cs:8,\i) {backgammon checker = dark};
+    }
+    \foreach \i in {1, ..., 3} {
+      \pic at (point cs:17,\i) {backgammon checker = light};
+    }
+    \foreach \i in {1, ..., 5} {
+      \pic at (point cs:6,\i) {backgammon checker = dark};
+    }
+    \foreach \i in {1, ..., 5} {
+      \pic at (point cs:19,\i) {backgammon checker = light};
+    }
+    \foreach \i in {1, ..., 2} {
+      \pic at (point cs:24,\i) {backgammon checker = dark};
+    }
+    \foreach \i in {1, ..., 2} {
+      \pic at (point cs:1,\i) {backgammon checker = light};
+    }
   \end{backgammon}
 \end{document}
