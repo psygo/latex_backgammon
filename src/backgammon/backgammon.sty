@@ -386,13 +386,21 @@
       \or \def\bgDiePips{-0.22/0.22,0.22/0.22,-0.22/0,0.22/0,-0.22/-0.22,0.22/-0.22}%
       \fi
       \foreach \bgPipX/\bgPipY in \bgDiePips {
+        % The y-offset (but not x, since `backgammon`'s ambient scale
+        % is only ever non-uniform in y) is divided by `\bgYScale`
+        % here: a plain \node's *position* always respects the ambient
+        % scale, even with `transform shape = false` on it (that only
+        % cancels the node's own shape distortion) -- so without this,
+        % the ambient `yscale` would multiply the offset a second time
+        % and push the pips outside the die at any `board height` other
+        % than the one that makes `\bgYScale = 1`.
         \node[
           circle,
           fill            = black,
           minimum width   = \bgDiePipSize cm,
           inner sep       = 0pt,
           transform shape = false,
-        ] at (\bgPipX * \bgDieSize, \bgPipY * \bgDieSize) {};
+        ] at (\bgPipX * \bgDieSize, \bgPipY * \bgDieSize / \bgYScale) {};
       }
     }
   },
