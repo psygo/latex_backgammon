@@ -5,6 +5,13 @@
 % `coordinates` key on the `backgammon` environment.
 \newif\ifbackgammonShowCoordinates
 
+% Whether the left/right side columns (for the doubling die and the
+% checkers that have left the board, respectively) take up any space at
+% all; see the `left column`/`right column` keys on the `backgammon`
+% environment.
+\newif\ifbackgammonShowLeftColumn
+\newif\ifbackgammonShowRightColumn
+
 % The two alternating colors of the triangles ("files").
 \definecolor{backgammonLight}{HTML}{F0D9B5}
 \definecolor{backgammonDark}{HTML}{8B5A2B}
@@ -35,18 +42,31 @@
 % This is a plain macro (rather than a pic of its own) so that both
 % `backgammon board` and `backgammon coordinates` can compute the same
 % positions without one having to reach into the other's local scope.
+%
+% The left/right columns collapse to width 0 when disabled (see
+% `left column`/`right column`), so the rest of the board simply closes
+% up around them instead of leaving a gap.
 \def\bgSetupBoardLayout{%
   \def\bgPointWidth{1}%
   \def\bgPointsPerQuadrant{6}%
-  \def\bgSideColWidth{1.5}%
   \def\bgBarWidth{1}%
   \def\bgHeight{4}%
+  \ifbackgammonShowLeftColumn
+    \let\bgLeftColWidth\backgammonSideColWidth
+  \else
+    \def\bgLeftColWidth{0}%
+  \fi
+  \ifbackgammonShowRightColumn
+    \let\bgRightColWidth\backgammonSideColWidth
+  \else
+    \def\bgRightColWidth{0}%
+  \fi
   \pgfmathsetmacro\bgQuadrantWidth{\bgPointWidth * \bgPointsPerQuadrant}%
-  \pgfmathsetmacro\bgQuadrantAX{\bgSideColWidth}%
+  \pgfmathsetmacro\bgQuadrantAX{\bgLeftColWidth}%
   \pgfmathsetmacro\bgBarX{\bgQuadrantAX + \bgQuadrantWidth}%
   \pgfmathsetmacro\bgQuadrantBX{\bgBarX + \bgBarWidth}%
   \pgfmathsetmacro\bgRightColX{\bgQuadrantBX + \bgQuadrantWidth}%
-  \pgfmathsetmacro\bgBoardWidth{\bgRightColX + \bgSideColWidth}%
+  \pgfmathsetmacro\bgBoardWidth{\bgRightColX + \bgRightColWidth}%
 }
 
 \pgfkeys{
@@ -58,18 +78,25 @@
   %
   % The fill color is deliberately left unset here so that it can be
   % passed in when the pic is placed, e.g. `\pic[fill = backgammonDark]`.
+  %
+  % The width is derived from `file gap` (the space left between two
+  % neighboring files, out of the fixed 1-unit spacing between them)
+  % rather than being a size of its own, so that the triangles always
+  % stay centered on, and touching, their point on the grid.
   /tikz/pics/backgammon file bg triangle/.style={
     code={
+      \pgfmathsetmacro\bgFileWidth{1 - \backgammonFileGap}
       \node[%
         isosceles triangle,
         isosceles triangle stretches,
         isosceles triangle apex angle = 30,
         shape border rotate            = \bgFileRotate,
-        minimum height                 = 1.7cm,
-        minimum width                  = 0.75cm,
+        minimum height                 = \backgammonFileHeight cm,
+        minimum width                  = \bgFileWidth cm,
         inner sep                      = 0pt,
         anchor                         = \bgFileAnchor,
         fill, % the color itself is set when the pic is placed
+        transform shape = false, % stay a true triangle; see `backgammon`
       ]
         (triangle) at (0, 0){};
       }
@@ -89,10 +116,10 @@
         \pgfmathtruncatemacro\bgLabelTopA{2*\bgPointsPerQuadrant + 1 + \i}
         \pgfmathtruncatemacro\bgLabelTopB{3*\bgPointsPerQuadrant + 1 + \i}
 
-        \node[font=\bfseries\small] at (\bgLabelAX, -0.3)             {\bgLabelBottomA};
-        \node[font=\bfseries\small] at (\bgLabelBX, -0.3)             {\bgLabelBottomB};
-        \node[font=\bfseries\small] at (\bgLabelAX, \bgHeight + 0.3)  {\bgLabelTopA};
-        \node[font=\bfseries\small] at (\bgLabelBX, \bgHeight + 0.3)  {\bgLabelTopB};
+        \node[font=\bfseries\small, transform shape = false] at (\bgLabelAX, -0.3)             {\bgLabelBottomA};
+        \node[font=\bfseries\small, transform shape = false] at (\bgLabelBX, -0.3)             {\bgLabelBottomB};
+        \node[font=\bfseries\small, transform shape = false] at (\bgLabelAX, \bgHeight + 0.3)  {\bgLabelTopA};
+        \node[font=\bfseries\small, transform shape = false] at (\bgLabelBX, \bgHeight + 0.3)  {\bgLabelTopB};
       }
     }
   },
@@ -107,12 +134,19 @@
     code={
       \bgSetupBoardLayout
 
-      % 1. The outer outline, plus the dividers between the 5 regions.
+      % 1. The outer outline, plus the dividers between the regions. The
+      %    left/right dividers are only drawn when that column is
+      %    actually shown, since otherwise they'd just double up on the
+      %    outer outline (their width having collapsed to 0).
       \draw (0, 0) rectangle (\bgBoardWidth, \bgHeight);
-      \draw (\bgQuadrantAX, 0) -- (\bgQuadrantAX, \bgHeight);
+      \ifbackgammonShowLeftColumn
+        \draw (\bgQuadrantAX, 0) -- (\bgQuadrantAX, \bgHeight);
+      \fi
       \draw (\bgBarX,       0) -- (\bgBarX,       \bgHeight);
       \draw (\bgQuadrantBX, 0) -- (\bgQuadrantBX, \bgHeight);
-      \draw (\bgRightColX,  0) -- (\bgRightColX,  \bgHeight);
+      \ifbackgammonShowRightColumn
+        \draw (\bgRightColX, 0) -- (\bgRightColX, \bgHeight);
+      \fi
 
       % 2. The 2 x 6 files in each of the 2 rectangles (24 in total),
       %    alternating colors continuously across both quadrants.
@@ -123,11 +157,11 @@
           \pgfmathsetmacro\bgFileX{\bgQuadrantBX + \n - 6 + 0.5}
         \fi
         \ifodd\n
-          \pic[fill = backgammonDark]  at (\bgFileX, 0)        {backgammon file bg triangle};
-          \pic[fill = backgammonLight, backgammon file direction = down] at (\bgFileX, \bgHeight) {backgammon file bg triangle};
+          \pic[fill = \backgammonFileColorDark]  at (\bgFileX, 0)        {backgammon file bg triangle};
+          \pic[fill = \backgammonFileColorLight, backgammon file direction = down] at (\bgFileX, \bgHeight) {backgammon file bg triangle};
         \else
-          \pic[fill = backgammonLight] at (\bgFileX, 0)        {backgammon file bg triangle};
-          \pic[fill = backgammonDark,  backgammon file direction = down] at (\bgFileX, \bgHeight) {backgammon file bg triangle};
+          \pic[fill = \backgammonFileColorLight] at (\bgFileX, 0)        {backgammon file bg triangle};
+          \pic[fill = \backgammonFileColorDark,  backgammon file direction = down] at (\bgFileX, \bgHeight) {backgammon file bg triangle};
         \fi
       }
 
@@ -137,7 +171,7 @@
       % 4. The column on the left, for the doubling die: this is left
       %    empty here. The die's value and position are up to the user,
       %    placed like any other piece via a `\pic` inside `backgammon`,
-      %    e.g. `\pic at (\bgSideColWidth/2, \bgHeight/2)
+      %    e.g. `\pic at (\bgLeftColWidth/2, \bgHeight/2)
       %    {backgammon doubling die = 64};`.
 
       % 5. The column on the right, for the checkers that have left the board:
@@ -175,31 +209,87 @@
         minimum width   = 0.9cm,
         minimum height  = 0.9cm,
         inner sep       = 0pt,
+        transform shape = false, % stay a true square; see `backgammon`
       ] at (0, 0) {#1};
     }
   },
   /phili/backgammon/.cd,
-    board dimension/.store in = \backgammonBoardDimension,
-    board dimension           = 5 cm,
+    % The board's physical size. These are independent (rather than a
+    % single `board dimension` that scales both together), so the board
+    % can be stretched to a non-natural aspect ratio if desired. The
+    % defaults reproduce the board's natural 16-by-4-unit aspect ratio.
+    board width/.store in  = \backgammonBoardWidth,
+    board width            = 5 cm,
+    board height/.store in = \backgammonBoardHeight,
+    board height           = 1.25 cm,
     coordinates/.is if        = backgammonShowCoordinates,
     coordinates/.default      = true,
     coordinates               = true,
+    % The two alternating colors of the file triangles.
+    light file color/.store in = \backgammonFileColorLight,
+    light file color           = backgammonLight,
+    dark file color/.store in  = \backgammonFileColorDark,
+    dark file color            = backgammonDark,
+    % How tall the file triangles are, and how much of the fixed
+    % 1-unit spacing between neighboring files is left empty as a gap
+    % between them (see `backgammon file bg triangle` above).
+    file height/.store in = \backgammonFileHeight,
+    file height           = 1.7,
+    file gap/.store in    = \backgammonFileGap,
+    file gap              = 0.25,
+    % Whether the left/right side columns take up any space at all.
+    left column/.is if    = backgammonShowLeftColumn,
+    left column/.default  = true,
+    left column           = true,
+    right column/.is if   = backgammonShowRightColumn,
+    right column/.default = true,
+    right column          = true,
+    % The width of the left/right side columns, when shown.
+    side column width/.store in = \backgammonSideColWidth,
+    side column width           = 1.5,
 }
 
 \newenvironment{backgammon}[1][]{%
-  \begin{tikzpicture}[/phili/backgammon/.cd, #1]
+  \begin{tikzpicture}
+    % `#1` is deliberately applied via `\pgfqkeys` (which takes the
+    % path as a separate argument) rather than `\tikzset{/phili/
+    % backgammon/.cd, #1}`: `\newenvironment`'s optional argument keeps
+    % any leading whitespace it was given (e.g. from a line break right
+    % after the opening `[`), and pgfkeys fails to match a key whose
+    % name has that whitespace glued to the front of it -- but only
+    % when the `.cd` and the (whitespace-prefixed) key list are given
+    % to the same `\pgfkeys`/`\tikzset` call, as they would be here.
+    \pgfqkeys{/phili/backgammon}{#1}
     % The board is drawn on a fixed, unit-less grid (see
-    % \bgSetupBoardLayout); `board dimension` is the desired physical
-    % width, so we scale the whole board (including node shapes, via
-    % `transform shape`) by the ratio between the two.
+    % \bgSetupBoardLayout); `board width`/`board height` are the desired
+    % physical size of that grid, so we stretch the board's layout
+    % (the outer rectangle, the dividers, and where each piece is
+    % positioned) by the ratio between the two, independently in x and
+    % y so that a non-natural aspect ratio can be requested.
+    %
+    % `transform shape` IS needed here, even though we don't want a
+    % non-uniform stretch to distort node shapes: a `\pic` (unlike a
+    % plain `\node`) only positions itself according to the ambient
+    % scale/rotate if `transform shape` is in effect for it -- without
+    % it, every `\pic` in here (the board itself, each file, the
+    % coordinate labels, any piece the user places) would render at its
+    % natural, un-stretched position, ignoring `board width`/`board
+    % height` entirely instead of just being placed wrong.
+    %
+    % So `transform shape` is enabled here for correct positioning, and
+    % every leaf shape that shouldn't be distorted by it (the file
+    % triangles, the doubling die, the coordinate labels) explicitly
+    % sets `transform shape = false` on its own node to opt back out --
+    % which only cancels the shape's own rendering, not its position.
     %
     % This scope is left open here and only closed in the environment's
     % end code, so that any pieces (checkers, dice, ...) the user places
     % with their own `\pic` commands inside `backgammon` share the same
     % grid coordinates and the same scaling as the board itself.
     \bgSetupBoardLayout
-    \pgfmathsetmacro\bgScale{\backgammonBoardDimension / (\bgBoardWidth cm)}
-    \begin{scope}[scale = \bgScale, transform shape]
+    \pgfmathsetmacro\bgXScale{\backgammonBoardWidth  / (\bgBoardWidth cm)}
+    \pgfmathsetmacro\bgYScale{\backgammonBoardHeight / (\bgHeight     cm)}
+    \begin{scope}[xscale = \bgXScale, yscale = \bgYScale, transform shape]
       \pic{backgammon board};
 }{
     \end{scope}
