@@ -36,6 +36,22 @@
   backgammon file direction            = up,
 }
 
+% Generic `/tikz/pics` options (rather than ones scoped under any
+% particular pic) so they can be passed in the same key-list as a
+% pic's own argument, e.g. `\pic {backgammon doubling die = 64, scale =
+% 1.5, font size = 12pt}`. Only `backgammon doubling die` reads
+% `\bgPicScale`/`\bgPicFontSize` today, so this has no effect on other
+% pics; they default back for any invocation that doesn't set them
+% explicitly, the same way `backgammon file direction` does above.
+\tikzset{
+  /tikz/pics/scale/.store in = \bgPicScale,
+  /tikz/pics/scale/.default  = 1,
+  /tikz/pics/scale           = 1,
+  /tikz/pics/font size/.store in = \bgPicFontSize,
+  /tikz/pics/font size/.default  = 10pt,
+  /tikz/pics/font size           = 10pt,
+}
+
 % The board's layout constants, for the 5 regions from left to right:
 %   [left col][quadrant A: 6 files][bar][quadrant B: 6 files][right col]
 %
@@ -220,17 +236,30 @@
   },
   % The doubling die (cube), showing the current stake value (2, 4, 8,
   % 16, 32 or 64) passed as the pic's argument, e.g.
-  % `\pic {backgammon doubling die = 64}`.
+  % `\pic {backgammon doubling die = 64}`. Its overall size is the base
+  % 0.9cm die multiplied by `scale`, and its digits are set in `font
+  % size` (base 10pt), also multiplied by `scale` so a scaled-up die
+  % keeps looking proportioned even without adjusting `font size` too.
+  % Both are pic options of their own -- passed alongside the value in
+  % the same braces, e.g. `\pic {backgammon doubling die = 64, scale =
+  % 1.5, font size = 12pt}`. They're deliberately custom `/tikz/pics`
+  % options (see their `\tikzset` above) rather than relying on
+  % genuine TikZ canvas scaling: the die's node sets `transform shape =
+  % false` (to stay undistorted under `backgammon`'s own `yscale`),
+  % which would just as well cancel out a real canvas scale wrapped
+  % around this pic.
   /tikz/pics/backgammon doubling die/.style args={#1}{
     code={
+      \pgfmathsetmacro\bgDoublingDieSize{0.9 * \bgPicScale}
+      \pgfmathsetlengthmacro\bgDoublingDieFontSize{\bgPicFontSize * \bgPicScale}
       \node[
         draw,
         fill            = white,
         text            = black,
-        font            = \bfseries,
+        font            = \fontsize{\bgDoublingDieFontSize}{\bgDoublingDieFontSize}\selectfont\bfseries,
         rounded corners = 1mm,
-        minimum width   = 0.9cm,
-        minimum height  = 0.9cm,
+        minimum width   = \bgDoublingDieSize cm,
+        minimum height  = \bgDoublingDieSize cm,
         inner sep       = 0pt,
         transform shape = false, % stay a true square; see `backgammon`
       ] at (0, 0) {#1};
