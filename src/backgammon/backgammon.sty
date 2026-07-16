@@ -127,31 +127,53 @@
 % deferring only the `point cs:...` part to our own code sidesteps that
 % entirely, and lets us run arbitrary TeX (the `\ifnum` chain below)
 % while computing the point, which a plain expandable macro couldn't.
+%
+% `\bgComputePointX` (setting `\bgPointX` and, as a side effect,
+% leaving `\bgPointNum` set to the truncated point number) is factored
+% out so `die cs:` below can reuse the same point-to-x mapping without
+% duplicating it.
+\def\bgComputePointX#1{%
+  \pgfmathtruncatemacro\bgPointNum{#1}%
+  \ifnum\bgPointNum<7
+    \pgfmathsetmacro\bgPointX{\bgQuadrantBX + (6.5  - \bgPointNum) * \bgPointWidth}%
+  \else\ifnum\bgPointNum<13
+    \pgfmathsetmacro\bgPointX{\bgQuadrantAX + (12.5 - \bgPointNum) * \bgPointWidth}%
+  \else\ifnum\bgPointNum<19
+    \pgfmathsetmacro\bgPointX{\bgQuadrantAX + (\bgPointNum - 12.5) * \bgPointWidth}%
+  \else
+    \pgfmathsetmacro\bgPointX{\bgQuadrantBX + (\bgPointNum - 18.5) * \bgPointWidth}%
+  \fi\fi\fi
+}
 \def\bgPointCoordinateSystem#1,#2\bgPointCoordinateSystemEnd{%
   \bgSetupBoardLayout
-  \pgfmathtruncatemacro\bgPointNum{#1}%
+  \bgComputePointX{#1}%
   \pgfmathsetmacro\bgCheckerDiameterUnits{(\backgammonCheckerSize / 1cm) / \bgYScale}%
   \pgfmathsetmacro\bgCheckerGapUnits{(\backgammonCheckerSpacing / 1cm) / \bgYScale}%
   \pgfmathsetmacro\bgStackY{%
     0.5*\bgCheckerDiameterUnits
     + (#2 - 1) * (\bgCheckerDiameterUnits + \bgCheckerGapUnits)%
   }%
-  \ifnum\bgPointNum<7
-    \pgfmathsetmacro\bgPointX{\bgQuadrantBX + (6.5  - \bgPointNum) * \bgPointWidth}%
+  \ifnum\bgPointNum<13
     \pgfmathsetmacro\bgPointY{\bgStackY}%
-  \else\ifnum\bgPointNum<13
-    \pgfmathsetmacro\bgPointX{\bgQuadrantAX + (12.5 - \bgPointNum) * \bgPointWidth}%
-    \pgfmathsetmacro\bgPointY{\bgStackY}%
-  \else\ifnum\bgPointNum<19
-    \pgfmathsetmacro\bgPointX{\bgQuadrantAX + (\bgPointNum - 12.5) * \bgPointWidth}%
-    \pgfmathsetmacro\bgPointY{\bgHeight - \bgStackY}%
   \else
-    \pgfmathsetmacro\bgPointX{\bgQuadrantBX + (\bgPointNum - 18.5) * \bgPointWidth}%
     \pgfmathsetmacro\bgPointY{\bgHeight - \bgStackY}%
-  \fi\fi\fi
+  \fi
   \pgfpointxy{\bgPointX}{\bgPointY}%
 }
 \tikzdeclarecoordinatesystem{point}{\bgPointCoordinateSystem#1\bgPointCoordinateSystemEnd}
+
+% Like `point cs:`, but for the two regular dice: they share the same
+% per-point x position as the checkers (so a die can be shown "on" a
+% point's column), but are always vertically centered on the board
+% (like the doubling die), regardless of any checkers stacked there --
+% so this only takes the point number, not a stack index, e.g.
+% `\pic at (die cs:12) {backgammon die = 4};`.
+\def\bgDieCoordinateSystem#1\bgDieCoordinateSystemEnd{%
+  \bgSetupBoardLayout
+  \bgComputePointX{#1}%
+  \pgfpointxy{\bgPointX}{\bgHeight/2}%
+}
+\tikzdeclarecoordinatesystem{die}{\bgDieCoordinateSystem#1\bgDieCoordinateSystemEnd}
 
 \pgfkeys{
   % These are the background triangles used for each file.
@@ -332,9 +354,46 @@
       ] at (0, 0) {\bgPicNumber};
     }
   },
-  /tikz/pics/backgammon die/.style={
+  % A single regular die, showing its face value (1-6, passed as the
+  % pic's argument) as pips, e.g. `\pic at (die cs:12) {backgammon die
+  % = 4}`. Placed like `backgammon checker`/`backgammon doubling die`
+  % (by the user, not the board); its size is `die size` multiplied by
+  % the shared `scale` pic option, and its outline is `die border
+  % width`. `die cs:` (see above) shares the checkers' per-point x
+  % position but always sits at the board's vertical center.
+  /tikz/pics/backgammon die/.style args={#1}{
     code={
-
+      \pgfmathtruncatemacro\bgDieValue{#1}
+      \pgfmathsetmacro\bgDieSize{(\backgammonDieSize / 1cm) * \bgPicScale}
+      \pgfmathsetmacro\bgDieCorner{0.15 * \bgDieSize}
+      \pgfmathsetmacro\bgDiePipSize{0.18 * \bgDieSize}
+      \node[
+        draw,
+        line width      = \backgammonDieBorderWidth,
+        fill            = white,
+        rounded corners = \bgDieCorner cm,
+        minimum width   = \bgDieSize cm,
+        minimum height  = \bgDieSize cm,
+        inner sep       = 0pt,
+        transform shape = false, % stay a true square; see `backgammon`
+      ] at (0, 0) {};
+      \ifcase\bgDieValue\relax
+      \or \def\bgDiePips{0/0}%
+      \or \def\bgDiePips{-0.22/0.22,0.22/-0.22}%
+      \or \def\bgDiePips{-0.22/0.22,0/0,0.22/-0.22}%
+      \or \def\bgDiePips{-0.22/0.22,0.22/0.22,-0.22/-0.22,0.22/-0.22}%
+      \or \def\bgDiePips{-0.22/0.22,0.22/0.22,0/0,-0.22/-0.22,0.22/-0.22}%
+      \or \def\bgDiePips{-0.22/0.22,0.22/0.22,-0.22/0,0.22/0,-0.22/-0.22,0.22/-0.22}%
+      \fi
+      \foreach \bgPipX/\bgPipY in \bgDiePips {
+        \node[
+          circle,
+          fill            = black,
+          minimum width   = \bgDiePipSize cm,
+          inner sep       = 0pt,
+          transform shape = false,
+        ] at (\bgPipX * \bgDieSize, \bgPipY * \bgDieSize) {};
+      }
     }
   },
   % The doubling die (cube), showing the current stake value (2, 4, 8,
@@ -350,13 +409,14 @@
   % genuine TikZ canvas scaling: the die's node sets `transform shape =
   % false` (to stay undistorted under `backgammon`'s own `yscale`),
   % which would just as well cancel out a real canvas scale wrapped
-  % around this pic.
+  % around this pic. Its outline width is `doubling die border width`.
   /tikz/pics/backgammon doubling die/.style args={#1}{
     code={
       \pgfmathsetmacro\bgDoublingDieSize{0.9 * \bgPicScale}
       \pgfmathsetlengthmacro\bgDoublingDieFontSize{\bgPicFontSize * \bgPicScale}
       \node[
         draw,
+        line width      = \backgammonDoublingDieBorderWidth,
         fill            = white,
         text            = black,
         font            = \fontsize{\bgDoublingDieFontSize}{\bgDoublingDieFontSize}\selectfont\bfseries,
@@ -409,6 +469,18 @@
     % value makes them overlap. Independent of `checker size`.
     checker spacing/.store in = \backgammonCheckerSpacing,
     checker spacing           = 0cm,
+    % The doubling die's outline width (its size and font are pic
+    % options -- `scale`/`font size` -- rather than environment-wide,
+    % since there's only ever one doubling die on the board).
+    doubling die border width/.store in = \backgammonDoublingDieBorderWidth,
+    doubling die border width           = 1pt,
+    % The regular dice's diameter (an absolute physical size, like
+    % `board width`, multiplied by that pic's own `scale` option) and
+    % outline width.
+    die size/.store in = \backgammonDieSize,
+    die size           = 0.8cm,
+    die border width/.store in = \backgammonDieBorderWidth,
+    die border width           = 1pt,
     % How tall the file triangles are, and how much physical space is
     % left as a gap between neighboring files (see `backgammon file bg
     % triangle` above). Both are absolute physical sizes, rather than
