@@ -2,6 +2,8 @@
 
 A package for drawing backgammon vector diagrams with LaTeX.
 
+<img src="assets/sample_1.png" height="300px" alt="Sample 1" />
+
 ## References
 
 - Other LaTeX backgammon projects:
