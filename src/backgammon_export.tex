@@ -1,41 +1,18 @@
-\documentclass[14pt]{extarticle}
-
-% ----------------------------------------------------------
-% Config
+\documentclass[12pt]{standalone}
 
 \def\repoPath{/Users/phili/Code/latex_backgammon/src/}
 \usepackage{\repoPath/backgammon/backgammon}
 
-% ----------------------------------------------------------
-% Title
-
-\title{%
-  \scshape \fontsize{26pt}{22pt}\selectfont \vspace{-1cm} Backgammon Demo}
-\author{%
-  \scshape \Large Philippe Fanaro
-}
-\date{}
-
-% ----------------------------------------------------------
-
 \begin{document}
-  \maketitle
-  
-  \section{Introduction}
-  
-  This is a package for drawing vector backgammon diagrams in \LaTeX.
-
-  \section{Diagram Examples}
-  
   \begin{backgammon}[%
-    board width                = 15cm,
-    board height               = 7.5cm,
-    file height                = 3.5cm,
+    board width                = 20cm,
+    board height               = 10cm,
+    file height                = 4.25cm,
     file gap                   = 0.15cm,
     side column width          = 1.2cm,
     coordinates gap            = 0.3cm,
     coordinates font size      = 12pt,
-    checker size               = 0.75cm,
+    checker size               = 1cm,
     checker spacing            = 0.0cm,
     bar spacing                = 0.2cm,
     dark checker border color  = white,
