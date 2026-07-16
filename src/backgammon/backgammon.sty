@@ -98,6 +98,45 @@
   \pgfmathsetmacro\bgBoardWidth{\bgRightColX + \bgRightColWidth}%
 }
 
+% Translates a (point number, stack index) pair -- point numbers 1-24,
+% following the exact same convention as `backgammon coordinates`'s
+% point labels -- into an actual `(x, y)` coordinate on the board, so
+% pieces can be placed like `\pic at (point cs:1,1) {backgammon
+% checker = light};` instead of by hand with
+% `\bgQuadrantAX`/`\bgPointWidth`/etc. The stack index is 1-based,
+% counting outward from the board's edge (i.e. away from the center),
+% spaced one `checker size` apart.
+%
+% This is a proper TikZ coordinate system (`\tikzdeclarecoordinatesystem`)
+% rather than a macro expanding to `(x, y)` text: TikZ's `at <coord>`
+% parser decides whether what follows is a coordinate by peeking at the
+% very next token *without* expanding it, so a macro call (which isn't
+% literally a `(`) fails to parse. Writing the real `(` ourselves and
+% deferring only the `point cs:...` part to our own code sidesteps that
+% entirely, and lets us run arbitrary TeX (the `\ifnum` chain below)
+% while computing the point, which a plain expandable macro couldn't.
+\def\bgPointCoordinateSystem#1,#2\bgPointCoordinateSystemEnd{%
+  \bgSetupBoardLayout
+  \pgfmathtruncatemacro\bgPointNum{#1}%
+  \pgfmathsetmacro\bgStackSpacing{(\backgammonCheckerSize / 1cm) / \bgYScale}%
+  \pgfmathsetmacro\bgStackY{(#2 - 0.5) * \bgStackSpacing}%
+  \ifnum\bgPointNum<7
+    \pgfmathsetmacro\bgPointX{\bgQuadrantBX + (6.5  - \bgPointNum) * \bgPointWidth}%
+    \pgfmathsetmacro\bgPointY{\bgStackY}%
+  \else\ifnum\bgPointNum<13
+    \pgfmathsetmacro\bgPointX{\bgQuadrantAX + (12.5 - \bgPointNum) * \bgPointWidth}%
+    \pgfmathsetmacro\bgPointY{\bgStackY}%
+  \else\ifnum\bgPointNum<19
+    \pgfmathsetmacro\bgPointX{\bgQuadrantAX + (\bgPointNum - 12.5) * \bgPointWidth}%
+    \pgfmathsetmacro\bgPointY{\bgHeight - \bgStackY}%
+  \else
+    \pgfmathsetmacro\bgPointX{\bgQuadrantBX + (\bgPointNum - 18.5) * \bgPointWidth}%
+    \pgfmathsetmacro\bgPointY{\bgHeight - \bgStackY}%
+  \fi\fi\fi
+  \pgfpointxy{\bgPointX}{\bgPointY}%
+}
+\tikzdeclarecoordinatesystem{point}{\bgPointCoordinateSystem#1\bgPointCoordinateSystemEnd}
+
 \pgfkeys{
   % These are the background triangles used for each file.
   %
@@ -223,10 +262,43 @@
       \fi
     }
   },
-  /tikz/pics/backgammon checker/.style={
-    code={
-      \draw (0, 0) circle (0.5cm);
-      \node[] at (0, 0) {};
+  % A single checker, its side ("light" or "dark", matching the same
+  % naming as `light file color`/`dark file color`) passed as the
+  % pic's argument, e.g. `\pic at (x, y) {backgammon checker = light}`.
+  % Like `backgammon doubling die`, it's placed by the user (not the
+  % board); its color comes from `light checker color`/`dark checker
+  % color`, its outline from `checker border width`, and its diameter
+  % is `checker size` multiplied by the shared `scale` pic option
+  % (e.g. `\pic at (x, y) {backgammon checker = light, scale = 0.9}`).
+  /tikz/pics/backgammon checker/.is choice,
+  /tikz/pics/backgammon checker/light/.style = {
+    code = {
+      \pgfmathsetmacro\bgCheckerDiameter{(\backgammonCheckerSize / 1cm) * \bgPicScale}
+      \node[
+        draw,
+        line width     = \backgammonCheckerBorderWidth,
+        circle,
+        fill           = \backgammonCheckerColorLight,
+        minimum width  = \bgCheckerDiameter cm,
+        minimum height = \bgCheckerDiameter cm,
+        inner sep      = 0pt,
+        transform shape = false, % stay a true circle; see `backgammon`
+      ] at (0, 0) {};
+    }
+  },
+  /tikz/pics/backgammon checker/dark/.style = {
+    code = {
+      \pgfmathsetmacro\bgCheckerDiameter{(\backgammonCheckerSize / 1cm) * \bgPicScale}
+      \node[
+        draw,
+        line width     = \backgammonCheckerBorderWidth,
+        circle,
+        fill           = \backgammonCheckerColorDark,
+        minimum width  = \bgCheckerDiameter cm,
+        minimum height = \bgCheckerDiameter cm,
+        inner sep      = 0pt,
+        transform shape = false, % stay a true circle; see `backgammon`
+      ] at (0, 0) {};
     }
   },
   /tikz/pics/backgammon die/.style={
@@ -289,6 +361,18 @@
     light file color           = backgammonLight,
     dark file color/.store in  = \backgammonFileColorDark,
     dark file color            = backgammonDark,
+    % The two checker colors (see `backgammon checker`'s `light`/`dark`
+    % argument), their outline width, and their diameter (an absolute
+    % physical size, like `board width`, multiplied by that pic's own
+    % `scale` option).
+    light checker color/.store in = \backgammonCheckerColorLight,
+    light checker color           = white,
+    dark checker color/.store in  = \backgammonCheckerColorDark,
+    dark checker color            = black,
+    checker border width/.store in = \backgammonCheckerBorderWidth,
+    checker border width            = 1pt,
+    checker size/.store in = \backgammonCheckerSize,
+    checker size           = 0.9cm,
     % How tall the file triangles are, and how much physical space is
     % left as a gap between neighboring files (see `backgammon file bg
     % triangle` above). Both are absolute physical sizes, rather than
