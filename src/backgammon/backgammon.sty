@@ -104,8 +104,12 @@
 % pieces can be placed like `\pic at (point cs:1,1) {backgammon
 % checker = light};` instead of by hand with
 % `\bgQuadrantAX`/`\bgPointWidth`/etc. The stack index is 1-based,
-% counting outward from the board's edge (i.e. away from the center),
-% spaced one `checker size` apart.
+% counting outward from the board's edge (i.e. away from the center).
+% The first checker (stack index 1) is always tangent to the board's
+% edge, regardless of `checker spacing`; `checker spacing` is the gap
+% left between each checker and the next one out -- 0 means tangent
+% (touching), matching `checker size`'s own units, and a negative value
+% makes them overlap.
 %
 % This is a proper TikZ coordinate system (`\tikzdeclarecoordinatesystem`)
 % rather than a macro expanding to `(x, y)` text: TikZ's `at <coord>`
@@ -118,8 +122,12 @@
 \def\bgPointCoordinateSystem#1,#2\bgPointCoordinateSystemEnd{%
   \bgSetupBoardLayout
   \pgfmathtruncatemacro\bgPointNum{#1}%
-  \pgfmathsetmacro\bgStackSpacing{(\backgammonCheckerSize / 1cm) / \bgYScale}%
-  \pgfmathsetmacro\bgStackY{(#2 - 0.5) * \bgStackSpacing}%
+  \pgfmathsetmacro\bgCheckerDiameterUnits{(\backgammonCheckerSize / 1cm) / \bgYScale}%
+  \pgfmathsetmacro\bgCheckerGapUnits{(\backgammonCheckerSpacing / 1cm) / \bgYScale}%
+  \pgfmathsetmacro\bgStackY{%
+    0.5*\bgCheckerDiameterUnits
+    + (#2 - 1) * (\bgCheckerDiameterUnits + \bgCheckerGapUnits)%
+  }%
   \ifnum\bgPointNum<7
     \pgfmathsetmacro\bgPointX{\bgQuadrantBX + (6.5  - \bgPointNum) * \bgPointWidth}%
     \pgfmathsetmacro\bgPointY{\bgStackY}%
@@ -373,6 +381,11 @@
     checker border width            = 1pt,
     checker size/.store in = \backgammonCheckerSize,
     checker size           = 0.9cm,
+    % The gap left between checkers stacked on the same point (see
+    % `point cs:` above): 0 means tangent (touching), and a negative
+    % value makes them overlap. Independent of `checker size`.
+    checker spacing/.store in = \backgammonCheckerSpacing,
+    checker spacing           = 0cm,
     % How tall the file triangles are, and how much physical space is
     % left as a gap between neighboring files (see `backgammon file bg
     % triangle` above). Both are absolute physical sizes, rather than
